@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tero Compressor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+  <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-xl">
+    <h1 class="text-3xl font-bold text-center mb-6 text-blue-600">Tero Compressor</h1>
+    
+    <form id="uploadForm" enctype="multipart/form-data">
+      <label for="file" class="flex flex-col items-center justify-center border-2 border-dashed border-blue-400 bg-blue-50 p-6 rounded-lg cursor-pointer hover:bg-blue-100">
+        <input id="file" name="file" type="file" class="hidden" required>
+        <span class="text-blue-600 text-lg">Click or drag a file to upload</span>
+      </label>
+
+      <div id="fileInfo" class="mt-3 text-gray-600 text-sm hidden"></div>
+
+      <button type="submit" class="mt-5 w-full bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition">
+        Compress
+      </button>
+    </form>
+
+    <div id="status" class="mt-4 text-center text-sm text-gray-700 hidden"></div>
+
+    <div id="compressionStats" class="mt-4 text-center hidden">
+      <p class="text-sm text-gray-700"><span class="font-semibold">Original Size:</span> <span id="originalSize"></span></p>
+      <p class="text-sm text-gray-700"><span class="font-semibold">Compressed Size:</span> <span id="compressedSize"></span></p>
+      <p class="text-sm text-gray-700"><span class="font-semibold">Compression Ratio:</span> <span id="ratio"></span></p>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("uploadForm");
+    const fileInput = document.getElementById("file");
+    const statusDiv = document.getElementById("status");
+    const fileInfo = document.getElementById("fileInfo");
+    const compressionStats = document.getElementById("compressionStats");
+    const originalSizeSpan = document.getElementById("originalSize");
+    const compressedSizeSpan = document.getElementById("compressedSize");
+    const ratioSpan = document.getElementById("ratio");
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (file) {
+        fileInfo.textContent = `Selected: ${file.name}`;
+        fileInfo.classList.remove("hidden");
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      statusDiv.textContent = "Compressing file...";
+      statusDiv.classList.remove("hidden");
+      compressionStats.classList.add("hidden");
+
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error("Compression failed.");
+
+        const contentLength = res.headers.get("Content-Length");
+
+        const blob = await res.blob();
+
+        const a = document.createElement("a");
+        a.href = window.URL.createObjectURL(blob);
+        a.download = "compressed_" + file.name;
+        a.click();
+
+        statusDiv.textContent = "File compressed and downloaded!";
+
+        // Display compression stats
+        const originalSize = file.size;
+        const compressedSize = blob.size;
+        const ratio = (originalSize / compressedSize).toFixed(2);
+
+        originalSizeSpan.textContent = (originalSize / 1024).toFixed(2) + " KB";
+        compressedSizeSpan.textContent = (compressedSize / 1024).toFixed(2) + " KB";
+        ratioSpan.textContent = ratio + "x";
+
+        compressionStats.classList.remove("hidden");
+
+      } catch (err) {
+        statusDiv.textContent = "Error: " + err.message;
+        compressionStats.classList.add("hidden");
+      }
+    });
+  </script>
+
+</body>
+</html>
